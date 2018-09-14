@@ -1,0 +1,21 @@
+{
+  "name": "bobblehead-module-oauth2",
+  "version": "1.0.0",
+  "description": "A module for BobbleHeadJS to provide OAuth2 functionalities",
+  "main": "./dist/main.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Andrea Postiglione",
+    "email": "andrea0postiglione@gmail.com"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "fast-sha256": "^1.1.0",
+    "hmacsha1": "^1.0.0"
+  }
+}

@@ -1,0 +1,45 @@
+<configuration>
+	<version>0.0.1</version>
+	<container>app-content</container>
+	<pages path="./pages/">
+		<index vid="1">
+			<data>
+				<start_test>Success</start_test>
+			</data>
+		</index>
+		<page vid="1" noback="true" keepLive="true" allowDuplicate="true" path="test.html">
+			<configuration>
+				<test>Success</test>
+			</configuration>
+		</page>
+	</pages>
+	<modules path="./modules/">
+		<module path="../../dist/main.js" enabled="true">
+			<configuration>
+				<services>
+					<facebook>
+						<auth_url>https://www.facebook.com/v3.1/dialog/oauth</auth_url>
+						<response_type>token</response_type>
+						<client_id>317355399025942</client_id>
+						<client_secret>91190e2cb525733a45cd7f98551e5700</client_secret>
+						<redirect_uri>https://localhost/dashboard</redirect_uri>
+					</facebook>
+					<google>
+						<auth_url>https://accounts.google.com/o/oauth2/auth</auth_url>
+						<response_type>code</response_type>
+						<token_url>https://www.googleapis.com/oauth2/v3/token</token_url>
+						<client_id>600682016963-jnor895sgnl2fcqgoooapv4j9g3bgu0q.apps.googleusercontent.com</client_id>
+						<client_secret>qZUe4SSSLyFDEotm1_0cF_nn</client_secret>
+						<redirect_uri>https://localhost/dashboard</redirect_uri>
+						<token_response_type>json</token_response_type>
+					</google>
+				</services>
+			</configuration>
+		</module>
+		<module path="test/main.js" enabled="true">
+			<configuration>
+				<test>123456</test>
+			</configuration>
+		</module>
+	</modules>
+</configuration>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module name="oauth2" version="1.0.0" path="./dist/" main="main.js">
+	<root></root>
+	<appid></appid>
+	<appname></appname>
+</module>

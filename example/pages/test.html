@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Test Page</title>
+	</head>
+	<body>
+		<div bbh-module="test">
+			<span>Plugin test:</span>
+		</div>	
+		<br>
+		<p>Test Mustache</p>
+		<ul>
+			<li>Index Test: {{#pageData.start_test}}{{.}}{{/pageData.start_test}}{{^pageData.start_test}}Not Tested{{/pageData.start_test}}</li>
+			<li>Configuration Test: {{#pageConf.test}}{{.}}{{/pageConf.test}}{{^pageConf.test}}Fail{{/pageConf.test}}</li>
+		</ul>
+		<p>Test Model: {{models.testModel.345.result}}</p>
+		<a href="app://page/back" >Back</a>
+		<p>Test Form: {{#pageData.testForm}}{{.}}{{/pageData.testForm}}{{^pageData.testForm}}Not Tested{{/pageData.testForm}}</p><br>
+		<form method="post" action="app://page/1">
+			<input type="hidden" name="testForm" value="Success" />
+			<button type="submit">Test</button>
+		</form>
+		<p>Test OAuth2</p>
+		<ul>
+			<li>Token Facebook: <span id="fb_token"></span></li>
+			<li><button id="fb_token_btn">Login Facebook</button></li>
+			<li>Token Google: <span id="gg_token"></span></li>
+			<li><button id="gg_token_btn">Login Google</button></li>
+		</ul>
+	</body>
+</html>
+<script>
+document.addEventListener('pageready', function(){
+	var fb_data = new FormData();
+	fb_data.set('service_name', 'facebook');
+	defaultConnector.request(new BobbleHead.ConnectorRequest(null, 'app://module/oauth2/getAccess', fb_data)).then( t => {
+		if(t)
+			document.getElementById('fb_token').innerText = t.token;
+	}).catch( e => {
+		console.log(e);
+	});
+	document.getElementById('fb_token_btn').addEventListener('click', function(){
+		defaultConnector.request(new BobbleHead.ConnectorRequest(null, 'app://module/oauth2/login', fb_data)).then( t => {
+			console.log(t);
+			if(t)
+				document.getElementById('fb_token').innerText = t.token;
+		}).catch( e => {
+			console.log(e);
+		});
+	});
+	var gg_data = new FormData();
+	gg_data.set('service_name', 'google');
+	gg_data.set('scope', 'email');
+	defaultConnector.request(new BobbleHead.ConnectorRequest(null, 'app://module/oauth2/getAccess', gg_data)).then( t => {
+		if(t)
+			document.getElementById('gg_token').innerText = t.token;
+	}).catch( e => {
+		console.log(e);
+	});
+	document.getElementById('gg_token_btn').addEventListener('click', function(){
+		defaultConnector.request(new BobbleHead.ConnectorRequest(null, 'app://module/oauth2/login', gg_data)).then( t => {
+			console.log(t);
+			if(t)
+				document.getElementById('gg_token').innerText = t.token;
+		}).catch( e => {
+			console.log(e);
+		});
+	});
+});
+</script>
