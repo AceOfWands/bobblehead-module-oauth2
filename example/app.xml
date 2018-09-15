@@ -32,6 +32,7 @@
 						<client_secret>qZUe4SSSLyFDEotm1_0cF_nn</client_secret>
 						<redirect_uri>https://localhost/dashboard</redirect_uri>
 						<token_response_type>json</token_response_type>
+						<persist>true</persist>
 					</google>
 				</services>
 			</configuration>

@@ -3,14 +3,15 @@ import * as sha256 from "fast-sha256";
 
 (function(app){
 	class OAuth2Access {
-		constructor(token, token_type, expires_in = -1, refresh_token = null, scope = null, extras){
+		constructor(token, token_type, expires = -1, refresh_token = null, scope = null, extras){
 			this.token = token;
 			this.token_type = token_type;
-			this.expires = (expires_in) ? ((new Date()).getTime() + parseInt(expires_in)) : -1;
+			this.expires = expires || -1;
 			this.refresh_token = refresh_token;
 			this.scope = scope;
 			this.extras = extras;
 			this.__listners = {};
+			var expires_in = expires - (new Date()).getTime();
 			if(expires_in > -1)
 				setTimeout(function(){
 					var ev = new Event('expired');
@@ -34,30 +35,61 @@ import * as sha256 from "fast-sha256";
 			for(var func of this.__listners[e.name])
 				func.call(this, e);
 		}
-		toPlainObject(){
-			//TODO:
+		toPlainObject(service_name){
+			return {
+				_id: this._id,
+				_rev: this._rev,
+				servName: service_name,
+				content: {
+					token: this.token,
+					token_type: this.token_type,
+					expires: this.expires,
+					refresh_token: this.refresh_token,
+					scope: this.scope,
+					extras: this.extras
+				}
+			};
 		}
 	}
 	class OAuth2Module extends BobbleHead.Module{
-		constructor(){
+		constructor(localDatabase){
 			super('oauth2');
 			this.services = {};
 			this.tokens = {
+				database: null,
+				persist: {
+					_id: 'oauth_module_persist_services'
+				},
 				content: {},
 				save: function(s){
-					//TODO:
+					this.database.put(this.persist).then(function(p){
+						this.persist._rev = p.rev;
+					}.bind(this)).catch(e => BobbleHead.Util.log(e));
+					this.database.put(this.content[s].toPlainObject(s)).then(function(p){
+						this.content[s]._rev = p.rev;
+					}.bind(this)).catch(e => BobbleHead.Util.log(e));
+				},
+				del: function(s){
+					this.database.remove('oauth_module_'+s+'_access').catch(e => BobbleHead.Util.log(e));
 				},
 				setAccess: function(s, a){
+					var old = this.content[s];
 					this.content[s] = a;
-					if(this.persist[s]==true)
-						this.save(s);
+					if(this.persist[s]==true){
+						if(!a){
+							this.del(s);
+						}else{
+							a._id = 'oauth_module_'+s+'_access';
+							if(old)
+								a._rev = old._rev;
+							this.save(s);
+						}
+					}
 				},
 				getAccess: function(s){
 					return this.content[s];
 				}
 			};
-			//TODO: load from localDatabase tokens
-			this.persist = {};
 			var nav = window.navigator;
 			var screen = window.screen;
 			this.guid = nav.mimeTypes.length;
@@ -80,10 +112,10 @@ import * as sha256 from "fast-sha256";
 			var serv_name = data.service_name;
 			this.services[serv_name] = data;
 			if(this.services[serv_name]['persist'])
-				if(this.services[serv_name]['persist'] === false)
+				if(this.services[serv_name]['persist'] == 'false')
 					delete this.services[serv_name]['persist'];
-				else if(this.services[serv_name]['persist'] === true){
-					this.persist[serv_name] = true;
+				else if(this.services[serv_name]['persist'] == 'true'){
+					this.tokens.persist[serv_name] = true;
 					delete this.services[serv_name]['persist'];
 				}
 			return true;
@@ -123,13 +155,17 @@ import * as sha256 from "fast-sha256";
 					extras[key] = response.content[key];
 				}
 			}
-			var accessObj = new OAuth2Access(access_token, token_type, expires_in, refresh_token, _scope, extras);
+			var accessObj = new OAuth2Access(access_token, token_type, (expires_in) ? ((new Date()).getTime() + parseInt(expires_in)) : -1, refresh_token, _scope, extras);
 			if(refresh_token &&
 				refresh_token!= '' &&
 				(token_type.toLowerCase() == 'bearer' ||
 				token_type.toLowerCase() == 'mac')
 			)
 				accessObj.addEventListener('expired',this.refreshToken.bind(this, serv_name, scope));
+			if(response._id){
+				accessObj._id = response._id;
+				accessObj._rev = response._rev;
+			}
 			this.tokens.setAccess(serv_name, accessObj);
 			return accessObj;
 		}
@@ -232,7 +268,21 @@ import * as sha256 from "fast-sha256";
 		init(configuration){
 			super.init(configuration);
 			console.log(111);
-			
+			this.tokens.database = localDatabase;
+			localDatabase.get('oauth_module_persist_services').then(function(p){
+				this.tokens.persist = p;
+			}.bind(this)).finally(function(){
+				for(var service in this.tokens.persist)
+					if(service != '_id' && service != '_rev')
+						localDatabase.get('oauth_module_'+service+'_access').then(function(serviceName, response){
+							if(response.content.expires)
+								response.content.expires_in = response.content.expires - (new Date()).getTime();
+							delete response.content.expires;
+							response.content.access_token = response.content.token;
+							delete response.content.token;
+							this.parseTokenFromResponse(response.servName, response.content.scope, response);
+						}.bind(this,service))
+			}.bind(this));
 			var services = configuration.getProperty('services');
 			if(services){
 				for(var serv_name in services){
@@ -241,7 +291,6 @@ import * as sha256 from "fast-sha256";
 					this.addService(serv);
 				}
 			}
-			
 			this.controller('addService', function(data, success, error){
 				var _data = {};
 				for(var v of data.entries())
@@ -271,7 +320,11 @@ import * as sha256 from "fast-sha256";
 					this.tokens.setAccess(data.get('service_name'), new OAuth2Access(
 						data.get('token'),
 						data.get('token_type'),
-						parseInt(data.get('expires')) - (new Date()).getTime(),
+						(data.get('expires_in')) ?
+							((new Date()).getTime() + parseInt(data.get('expires_in'))) :
+							(data.get('expires')) ?	
+								parseInt(data.get('expires')) :
+								-1,
 						data.get('refresh_token'),
 						data.get('scope')
 					));
@@ -358,7 +411,7 @@ import * as sha256 from "fast-sha256";
 											loginWindow.close();
 											this.logout(data);
 											if(access_token){
-												var accessObj = new OAuth2Access(access_token, 'token', expires_in, _scope);
+												var accessObj = new OAuth2Access(access_token, 'token', (expires_in) ? ((new Date()).getTime() + parseInt(expires_in)) : -1, _scope);
 												this.tokens.setAccess(serv_name, accessObj);
 												success(accessObj);
 											}else if(_error)
@@ -379,9 +432,6 @@ import * as sha256 from "fast-sha256";
 						}
 					};
 					setTimeout(catch_func.bind(this,catch_func), 1000);
-					loginWindow.addEventListener('close', function(){
-						console.log(4444);
-					});
 				}
 			});
 		}
